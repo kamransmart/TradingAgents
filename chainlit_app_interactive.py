@@ -9,11 +9,39 @@ import chainlit as cl
 from pathlib import Path
 from datetime import datetime
 from dotenv import load_dotenv
+import boto3
+from botocore.exceptions import ClientError
 
 from tradingagents.graph.trading_graph import TradingAgentsGraph
 from tradingagents.default_config import DEFAULT_CONFIG
 
 load_dotenv()
+
+# S3 Configuration
+S3_BUCKET = os.getenv("S3_RESULTS_BUCKET", "tradingagents-results-185327115759")
+USE_S3 = os.getenv("USE_S3", "true").lower() == "true"
+
+def save_to_s3(content: str, s3_key: str) -> bool:
+    """Save content to S3 bucket."""
+    if not USE_S3:
+        return False
+
+    try:
+        s3_client = boto3.client('s3',
+            aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+            region_name=os.getenv("AWS_REGION", "us-east-1")
+        )
+        s3_client.put_object(
+            Bucket=S3_BUCKET,
+            Key=s3_key,
+            Body=content.encode('utf-8'),
+            ContentType='text/plain'
+        )
+        return True
+    except ClientError as e:
+        print(f"Error saving to S3: {e}")
+        return False
 
 # Configuration state
 class ConfigState:
@@ -397,50 +425,75 @@ async def run_analysis():
         final_decision = final_state.get("final_trade_decision", "No decision available")
         final_predictions = final_state.get("final_predictions", "")
 
-        # Save results to file
+        # Save results to file and S3
         analysis_date = datetime.now().strftime('%Y-%m-%d')
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         results_dir = Path("results") / ticker / analysis_date
         reports_dir = results_dir / "reports"
-        reports_dir.mkdir(parents=True, exist_ok=True)
+
+        # Save locally (for non-Railway environments)
+        try:
+            reports_dir.mkdir(parents=True, exist_ok=True)
+        except:
+            pass  # Skip local save if filesystem is read-only (Railway)
+
+        # S3 base path
+        s3_base = f"results/{ticker}/{analysis_date}_{timestamp}"
+
+        # Helper to save to both local and S3
+        def save_report(name: str, content: str):
+            # Try local save
+            try:
+                with open(reports_dir / f"{name}.md", "w") as f:
+                    f.write(content)
+            except:
+                pass
+            # Save to S3
+            if USE_S3:
+                save_to_s3(content, f"{s3_base}/reports/{name}.md")
 
         # Save individual reports
         if shown_reports["market_report"]:
-            with open(reports_dir / "market_report.md", "w") as f:
-                f.write(shown_reports["market_report"])
+            save_report("market_report", shown_reports["market_report"])
 
         if shown_reports["sentiment_report"]:
-            with open(reports_dir / "sentiment_report.md", "w") as f:
-                f.write(shown_reports["sentiment_report"])
+            save_report("sentiment_report", shown_reports["sentiment_report"])
 
         if shown_reports["news_report"]:
-            with open(reports_dir / "news_report.md", "w") as f:
-                f.write(shown_reports["news_report"])
+            save_report("news_report", shown_reports["news_report"])
 
         if shown_reports["fundamentals_report"]:
-            with open(reports_dir / "fundamentals_report.md", "w") as f:
-                f.write(shown_reports["fundamentals_report"])
+            save_report("fundamentals_report", shown_reports["fundamentals_report"])
 
         if shown_reports["judge_decision"]:
-            with open(reports_dir / "investment_plan.md", "w") as f:
-                f.write(shown_reports["judge_decision"])
+            save_report("investment_plan", shown_reports["judge_decision"])
 
         if shown_reports["trader_investment_plan"]:
-            with open(reports_dir / "trader_investment_plan.md", "w") as f:
-                f.write(shown_reports["trader_investment_plan"])
+            save_report("trader_investment_plan", shown_reports["trader_investment_plan"])
 
         if shown_reports["risk_decision"]:
-            with open(reports_dir / "risk_analysis.md", "w") as f:
-                f.write(shown_reports["risk_decision"])
+            save_report("risk_analysis", shown_reports["risk_decision"])
 
         # Save final decision
-        with open(results_dir / f"{ticker}_final_decision.txt", "w") as f:
-            f.write(final_decision)
+        try:
+            with open(results_dir / f"{ticker}_final_decision.txt", "w") as f:
+                f.write(final_decision)
+        except:
+            pass
+        if USE_S3:
+            save_to_s3(final_decision, f"{s3_base}/{ticker}_final_decision.txt")
 
         if final_predictions:
-            with open(reports_dir / "predictions.md", "w") as f:
-                f.write(final_predictions)
+            try:
+                with open(reports_dir / "predictions.md", "w") as f:
+                    f.write(final_predictions)
+            except:
+                pass
+            if USE_S3:
+                save_to_s3(final_predictions, f"{s3_base}/reports/predictions.md")
 
         # Send results
+        storage_info = f"S3: `s3://{S3_BUCKET}/{s3_base}/`" if USE_S3 else f"Local: `{results_dir}`"
         await cl.Message(
             content=f"""# 📊 Analysis Complete for {ticker}
 
@@ -451,7 +504,7 @@ async def run_analysis():
 ---
 
 *Completed at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*
-*Results saved to: `{results_dir}`*"""
+*Results saved to: {storage_info}*"""
         ).send()
 
         if final_predictions:
