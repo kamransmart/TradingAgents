@@ -1,5 +1,5 @@
 from .utils.agent_utils import create_msg_delete
-from .utils.agent_states import AgentState, InvestDebateState, RiskDebateState
+from .utils.agent_states import AgentState, InvestDebateState, RiskDebateState, PredictionDebateState
 from .utils.memory import FinancialSituationMemory
 
 from .analysts.fundamentals_analyst import create_fundamentals_analyst
@@ -19,12 +19,18 @@ from .managers.risk_manager import create_risk_manager
 
 from .trader.trader import create_trader
 
+from .predictions.short_term_predictor import create_short_term_predictor
+from .predictions.medium_term_predictor import create_medium_term_predictor
+from .predictions.long_term_predictor import create_long_term_predictor
+from .predictions.prediction_manager import create_prediction_manager
+
 __all__ = [
     "FinancialSituationMemory",
     "AgentState",
     "create_msg_delete",
     "InvestDebateState",
     "RiskDebateState",
+    "PredictionDebateState",
     "create_bear_researcher",
     "create_bull_researcher",
     "create_research_manager",
@@ -37,4 +43,8 @@ __all__ = [
     "create_safe_debator",
     "create_social_media_analyst",
     "create_trader",
+    "create_short_term_predictor",
+    "create_medium_term_predictor",
+    "create_long_term_predictor",
+    "create_prediction_manager",
 ]

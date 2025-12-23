@@ -122,6 +122,26 @@ def select_research_depth() -> int:
     return choice
 
 
+def select_enable_prediction_team() -> bool:
+    """Select whether to enable the Prediction Team."""
+    choice = questionary.confirm(
+        "Enable Prediction Team? (Generates 14/30/90-day price forecasts)",
+        default=True,
+        style=questionary.Style(
+            [
+                ("question", "fg:cyan bold"),
+                ("answer", "fg:green bold"),
+            ]
+        ),
+    ).ask()
+
+    if choice is None:
+        # User cancelled, default to True
+        return True
+
+    return choice
+
+
 def select_shallow_thinking_agent(provider) -> str:
     """Select shallow thinking llm engine using an interactive selection."""
 

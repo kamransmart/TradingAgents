@@ -90,12 +90,16 @@ class TradingAgentsGraph:
         self.trader_memory = FinancialSituationMemory("trader_memory", self.config)
         self.invest_judge_memory = FinancialSituationMemory("invest_judge_memory", self.config)
         self.risk_manager_memory = FinancialSituationMemory("risk_manager_memory", self.config)
+        self.short_term_predictor_memory = FinancialSituationMemory("short_term_predictor_memory", self.config)
+        self.medium_term_predictor_memory = FinancialSituationMemory("medium_term_predictor_memory", self.config)
+        self.long_term_predictor_memory = FinancialSituationMemory("long_term_predictor_memory", self.config)
+        self.prediction_manager_memory = FinancialSituationMemory("prediction_manager_memory", self.config)
 
         # Create tool nodes
         self.tool_nodes = self._create_tool_nodes()
 
         # Initialize components
-        self.conditional_logic = ConditionalLogic()
+        self.conditional_logic = ConditionalLogic(self.config)
         self.graph_setup = GraphSetup(
             self.quick_thinking_llm,
             self.deep_thinking_llm,
@@ -105,6 +109,10 @@ class TradingAgentsGraph:
             self.trader_memory,
             self.invest_judge_memory,
             self.risk_manager_memory,
+            self.short_term_predictor_memory,
+            self.medium_term_predictor_memory,
+            self.long_term_predictor_memory,
+            self.prediction_manager_memory,
             self.conditional_logic,
         )
 
@@ -118,7 +126,8 @@ class TradingAgentsGraph:
         self.log_states_dict = {}  # date to full state dict
 
         # Set up the graph
-        self.graph = self.graph_setup.setup_graph(selected_analysts)
+        enable_prediction_team = self.config.get("enable_prediction_team", True)
+        self.graph = self.graph_setup.setup_graph(selected_analysts, enable_prediction_team)
 
     def _create_tool_nodes(self) -> Dict[str, ToolNode]:
         """Create tool nodes for different data sources using abstract methods."""
@@ -222,6 +231,14 @@ class TradingAgentsGraph:
             },
             "investment_plan": final_state["investment_plan"],
             "final_trade_decision": final_state["final_trade_decision"],
+            "prediction_debate_state": {
+                "short_term_history": final_state["prediction_debate_state"]["short_term_history"],
+                "medium_term_history": final_state["prediction_debate_state"]["medium_term_history"],
+                "long_term_history": final_state["prediction_debate_state"]["long_term_history"],
+                "history": final_state["prediction_debate_state"]["history"],
+                "final_predictions": final_state["prediction_debate_state"]["final_predictions"],
+            },
+            "final_predictions": final_state["final_predictions"],
         }
 
         # Save to file
@@ -233,6 +250,131 @@ class TradingAgentsGraph:
             "w",
         ) as f:
             json.dump(self.log_states_dict, f, indent=4)
+
+        # Generate comprehensive text report
+        self._generate_comprehensive_report(trade_date, final_state)
+
+    def _generate_comprehensive_report(self, trade_date, final_state):
+        """Generate a comprehensive text report and save to file named with symbol."""
+        report_lines = []
+
+        # Header
+        report_lines.append("=" * 80)
+        report_lines.append(f"TRADING AGENTS RESEARCH REPORT")
+        report_lines.append(f"Symbol: {self.ticker}")
+        report_lines.append(f"Analysis Date: {trade_date}")
+        report_lines.append(f"Generated: {date.today()}")
+        report_lines.append("=" * 80)
+        report_lines.append("")
+
+        # I. Analyst Team Reports
+        report_lines.append("I. ANALYST TEAM REPORTS")
+        report_lines.append("-" * 80)
+        report_lines.append("")
+
+        if final_state.get("market_report"):
+            report_lines.append("### MARKET ANALYSIS ###")
+            report_lines.append(final_state["market_report"])
+            report_lines.append("")
+
+        if final_state.get("sentiment_report"):
+            report_lines.append("### SOCIAL SENTIMENT ANALYSIS ###")
+            report_lines.append(final_state["sentiment_report"])
+            report_lines.append("")
+
+        if final_state.get("news_report"):
+            report_lines.append("### NEWS ANALYSIS ###")
+            report_lines.append(final_state["news_report"])
+            report_lines.append("")
+
+        if final_state.get("fundamentals_report"):
+            report_lines.append("### FUNDAMENTALS ANALYSIS ###")
+            report_lines.append(final_state["fundamentals_report"])
+            report_lines.append("")
+
+        # II. Research Team Reports
+        if final_state.get("investment_debate_state"):
+            report_lines.append("II. RESEARCH TEAM DECISION")
+            report_lines.append("-" * 80)
+            report_lines.append("")
+
+            debate_state = final_state["investment_debate_state"]
+
+            if debate_state.get("bull_history"):
+                report_lines.append("### BULL RESEARCHER ANALYSIS ###")
+                report_lines.append(debate_state["bull_history"])
+                report_lines.append("")
+
+            if debate_state.get("bear_history"):
+                report_lines.append("### BEAR RESEARCHER ANALYSIS ###")
+                report_lines.append(debate_state["bear_history"])
+                report_lines.append("")
+
+            if debate_state.get("judge_decision"):
+                report_lines.append("### RESEARCH MANAGER DECISION ###")
+                report_lines.append(debate_state["judge_decision"])
+                report_lines.append("")
+
+        # III. Trading Team Reports
+        if final_state.get("trader_investment_plan"):
+            report_lines.append("III. TRADING TEAM PLAN")
+            report_lines.append("-" * 80)
+            report_lines.append("")
+            report_lines.append("### TRADER INVESTMENT PLAN ###")
+            report_lines.append(final_state["trader_investment_plan"])
+            report_lines.append("")
+
+        # IV. Risk Management Team Reports
+        if final_state.get("risk_debate_state"):
+            report_lines.append("IV. RISK MANAGEMENT TEAM ANALYSIS")
+            report_lines.append("-" * 80)
+            report_lines.append("")
+
+            risk_state = final_state["risk_debate_state"]
+
+            if risk_state.get("risky_history"):
+                report_lines.append("### AGGRESSIVE (RISKY) ANALYST ###")
+                report_lines.append(risk_state["risky_history"])
+                report_lines.append("")
+
+            if risk_state.get("safe_history"):
+                report_lines.append("### CONSERVATIVE (SAFE) ANALYST ###")
+                report_lines.append(risk_state["safe_history"])
+                report_lines.append("")
+
+            if risk_state.get("neutral_history"):
+                report_lines.append("### NEUTRAL ANALYST ###")
+                report_lines.append(risk_state["neutral_history"])
+                report_lines.append("")
+
+        # V. Portfolio Management Decision
+        if final_state.get("final_trade_decision"):
+            report_lines.append("V. PORTFOLIO MANAGEMENT DECISION")
+            report_lines.append("-" * 80)
+            report_lines.append("")
+            report_lines.append("### FINAL TRADE DECISION ###")
+            report_lines.append(final_state["final_trade_decision"])
+            report_lines.append("")
+
+        # VI. Prediction Team Forecasts (Prediction Table Only)
+        if final_state.get("final_predictions"):
+            report_lines.append("VI. PREDICTION TEAM FORECASTS")
+            report_lines.append("-" * 80)
+            report_lines.append("")
+            report_lines.append(final_state["final_predictions"])
+            report_lines.append("")
+
+        # Footer
+        report_lines.append("=" * 80)
+        report_lines.append("END OF REPORT")
+        report_lines.append("=" * 80)
+
+        # Save to file with symbol name
+        output_file = Path(f"eval_results/{self.ticker}/TradingAgentsStrategy_logs/{self.ticker}_research_report_{trade_date}.txt")
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write("\n".join(report_lines))
+
+        print(f"\n✓ Comprehensive research report saved to: {output_file}")
 
     def reflect_and_remember(self, returns_losses):
         """Reflect on decisions and update memory based on returns."""

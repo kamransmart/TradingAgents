@@ -24,6 +24,10 @@ class GraphSetup:
         trader_memory,
         invest_judge_memory,
         risk_manager_memory,
+        short_term_predictor_memory,
+        medium_term_predictor_memory,
+        long_term_predictor_memory,
+        prediction_manager_memory,
         conditional_logic: ConditionalLogic,
     ):
         """Initialize with required components."""
@@ -35,10 +39,14 @@ class GraphSetup:
         self.trader_memory = trader_memory
         self.invest_judge_memory = invest_judge_memory
         self.risk_manager_memory = risk_manager_memory
+        self.short_term_predictor_memory = short_term_predictor_memory
+        self.medium_term_predictor_memory = medium_term_predictor_memory
+        self.long_term_predictor_memory = long_term_predictor_memory
+        self.prediction_manager_memory = prediction_manager_memory
         self.conditional_logic = conditional_logic
 
     def setup_graph(
-        self, selected_analysts=["market", "social", "news", "fundamentals"]
+        self, selected_analysts=["market", "social", "news", "fundamentals"], enable_prediction_team=True
     ):
         """Set up and compile the agent workflow graph.
 
@@ -105,6 +113,20 @@ class GraphSetup:
             self.deep_thinking_llm, self.risk_manager_memory
         )
 
+        # Create prediction team nodes
+        short_term_predictor = create_short_term_predictor(
+            self.quick_thinking_llm, self.short_term_predictor_memory
+        )
+        medium_term_predictor = create_medium_term_predictor(
+            self.quick_thinking_llm, self.medium_term_predictor_memory
+        )
+        long_term_predictor = create_long_term_predictor(
+            self.quick_thinking_llm, self.long_term_predictor_memory
+        )
+        prediction_manager_node = create_prediction_manager(
+            self.deep_thinking_llm, self.prediction_manager_memory
+        )
+
         # Create workflow
         workflow = StateGraph(AgentState)
 
@@ -125,6 +147,12 @@ class GraphSetup:
         workflow.add_node("Neutral Analyst", neutral_analyst)
         workflow.add_node("Safe Analyst", safe_analyst)
         workflow.add_node("Risk Judge", risk_manager_node)
+
+        # Add prediction team nodes
+        workflow.add_node("Short-Term Predictor", short_term_predictor)
+        workflow.add_node("Medium-Term Predictor", medium_term_predictor)
+        workflow.add_node("Long-Term Predictor", long_term_predictor)
+        workflow.add_node("Prediction Manager", prediction_manager_node)
 
         # Define edges
         # Start with the first analyst
@@ -196,7 +224,42 @@ class GraphSetup:
             },
         )
 
-        workflow.add_edge("Risk Judge", END)
+        # Connect Risk Judge to either Prediction Team or END
+        if enable_prediction_team:
+            # Connect Risk Judge to Prediction Team
+            workflow.add_edge("Risk Judge", "Short-Term Predictor")
+
+            # Add prediction team debate flow (round-robin)
+            workflow.add_conditional_edges(
+                "Short-Term Predictor",
+                self.conditional_logic.should_continue_prediction,
+                {
+                    "Medium-Term Predictor": "Medium-Term Predictor",
+                    "Prediction Manager": "Prediction Manager",
+                },
+            )
+            workflow.add_conditional_edges(
+                "Medium-Term Predictor",
+                self.conditional_logic.should_continue_prediction,
+                {
+                    "Long-Term Predictor": "Long-Term Predictor",
+                    "Prediction Manager": "Prediction Manager",
+                },
+            )
+            workflow.add_conditional_edges(
+                "Long-Term Predictor",
+                self.conditional_logic.should_continue_prediction,
+                {
+                    "Short-Term Predictor": "Short-Term Predictor",
+                    "Prediction Manager": "Prediction Manager",
+                },
+            )
+
+            # Final edge from Prediction Manager to END
+            workflow.add_edge("Prediction Manager", END)
+        else:
+            # Skip Prediction Team - go directly to END
+            workflow.add_edge("Risk Judge", END)
 
         # Compile and return
         return workflow.compile()
