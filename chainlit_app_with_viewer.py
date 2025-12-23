@@ -414,7 +414,7 @@ async def show_result_details(result: dict):
 async def send_report_message(ticker: str, date: str, report_name: str, content: str):
     """Send a single report as a message with file attachment."""
 
-    formatted_name, preview = format_report_content(report_name, content, max_preview_length=800)
+    formatted_name, preview = format_report_content(report_name, content, max_preview_length=None)
 
     # Create file element
     report_path = Path(f"./results/{ticker}/{date}/reports/{report_name}")
@@ -706,10 +706,9 @@ async def run_graph_with_streaming(graph, ticker, analysis_date, shares_owned, p
                 if messages and len(messages) > 0:
                     last_msg = messages[-1]
                     if hasattr(last_msg, 'content') and last_msg.content:
-                        # Send agent message to chat
-                        content_preview = last_msg.content[:300] if len(last_msg.content) > 300 else last_msg.content
+                        # Send agent message to chat (full content, no truncation)
                         await cl.Message(
-                            content=f"**{agent_name}**: {content_preview}...",
+                            content=f"**{agent_name}**: {last_msg.content}",
                             author=agent_name
                         ).send()
 
