@@ -630,6 +630,15 @@ async def run_trading_analysis():
     await cl.Message(content="🔄 Initializing agents...").send()
 
     try:
+        # Clear any existing ChromaDB collections to avoid conflicts
+        import chromadb
+        from chromadb.config import Settings
+        try:
+            chroma_client = chromadb.Client(Settings(allow_reset=True))
+            chroma_client.reset()
+        except:
+            pass  # Continue even if reset fails
+
         # Initialize the graph (builds automatically)
         graph = TradingAgentsGraph(
             selected_analysts=selected_analysts,
