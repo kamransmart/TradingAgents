@@ -35,6 +35,10 @@ ENV CHAINLIT_HOST=0.0.0.0
 # HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 #     CMD python -c "import requests; requests.get('http://localhost:8000/health', timeout=5)"
 
-# Run the Chainlit app (interactive version with model selection)
-# Use shell form to allow PORT environment variable expansion
-CMD chainlit run chainlit_app_interactive.py --host 0.0.0.0 --port ${PORT:-8000}
+# Copy startup script
+COPY start.sh .
+RUN chmod +x start.sh
+
+# Run the Chainlit app using startup script
+# This ensures PORT variable is properly exported before Chainlit starts
+CMD ["./start.sh"]
