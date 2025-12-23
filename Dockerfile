@@ -41,4 +41,4 @@ RUN chmod +x start.sh
 
 # Run the Chainlit app using startup script
 # This ensures PORT variable is properly exported before Chainlit starts
-CMD ["./start.sh"]
+CMD ["/bin/bash", "./start.sh"]
