@@ -36,5 +36,5 @@ ENV CHAINLIT_PORT=8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import requests; requests.get('http://localhost:8000/health', timeout=5)"
 
-# Run the Chainlit app
-CMD ["chainlit", "run", "chainlit_app.py", "--host", "0.0.0.0", "--port", "8000"]
+# Run the Chainlit app (interactive version with model selection)
+CMD ["chainlit", "run", "chainlit_app_interactive.py", "--host", "0.0.0.0", "--port", "8000"]

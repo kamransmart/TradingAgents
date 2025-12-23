@@ -1,0 +1,48 @@
+# AWS Copilot manifest for Load Balanced Web Service
+# https://aws.github.io/copilot-cli/docs/manifest/lb-web-service/
+
+name: web
+type: Load Balanced Web Service
+
+# Docker image configuration
+image:
+  build: ../../Dockerfile
+  port: 8000
+
+# Resource configuration
+cpu: 1024       # 1 vCPU
+memory: 2048    # 2 GB
+
+# Auto Scaling configuration
+count:
+  range: 1-4
+  cpu_percentage: 70
+  memory_percentage: 80
+
+# Network configuration
+http:
+  path: '/'
+  healthcheck:
+    path: /
+    healthy_threshold: 3
+    unhealthy_threshold: 2
+    interval: 10s
+    timeout: 5s
+
+# Environment variables
+variables:
+  PORT: 8000
+
+# Secrets (use AWS Secrets Manager)
+secrets:
+  OPENAI_API_KEY: /copilot/tradingagents/web/openai-api-key
+  ALPHA_VANTAGE_API_KEY: /copilot/tradingagents/web/alpha-vantage-key
+
+# Logging
+logging:
+  retention: 7
+
+# Task configuration
+taskdef_overrides:
+  - path: ContainerDefinitions[0].LogConfiguration.Options.awslogs-stream-prefix
+    value: web
