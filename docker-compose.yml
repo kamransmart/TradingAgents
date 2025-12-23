@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  tradingagents-web:
+    build: .
+    container_name: tradingagents-chainlit
+    ports:
+      - "8000:8000"
+    environment:
+      # LLM Provider API Keys
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+
+      # Data Provider API Keys
+      - ALPHA_VANTAGE_API_KEY=${ALPHA_VANTAGE_API_KEY}
+
+      # Social Media API Keys (optional)
+      - REDDIT_CLIENT_ID=${REDDIT_CLIENT_ID}
+      - REDDIT_CLIENT_SECRET=${REDDIT_CLIENT_SECRET}
+
+      # Chainlit settings
+      - CHAINLIT_HOST=0.0.0.0
+      - CHAINLIT_PORT=8000
+    volumes:
+      # Persist results
+      - ./results:/app/results
+      # Persist data cache
+      - ./dataflows/data_cache:/app/dataflows/data_cache
+      # Mount .env file (optional, can use environment variables instead)
+      - ./.env:/app/.env:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Add Redis for caching (uncomment if needed)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: tradingagents-redis
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis-data:/data
+  #   restart: unless-stopped
+
+# volumes:
+#   redis-data:

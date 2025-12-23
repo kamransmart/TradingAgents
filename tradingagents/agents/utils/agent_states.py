@@ -47,9 +47,37 @@ class RiskDebateState(TypedDict):
     count: Annotated[int, "Length of the current conversation"]  # Conversation length
 
 
+# Prediction team state
+class PredictionDebateState(TypedDict):
+    short_term_history: Annotated[
+        str, "Short-term (14-day) predictor's conversation history"
+    ]
+    medium_term_history: Annotated[
+        str, "Medium-term (30-day) predictor's conversation history"
+    ]
+    long_term_history: Annotated[
+        str, "Long-term (90-day) predictor's conversation history"
+    ]
+    history: Annotated[str, "Combined conversation history"]
+    latest_speaker: Annotated[str, "Predictor that spoke last"]
+    current_short_term_response: Annotated[
+        str, "Latest response by the short-term predictor"
+    ]
+    current_medium_term_response: Annotated[
+        str, "Latest response by the medium-term predictor"
+    ]
+    current_long_term_response: Annotated[
+        str, "Latest response by the long-term predictor"
+    ]
+    final_predictions: Annotated[str, "Consolidated predictions summary"]
+    count: Annotated[int, "Length of the current conversation"]
+
+
 class AgentState(MessagesState):
     company_of_interest: Annotated[str, "Company that we are interested in trading"]
     trade_date: Annotated[str, "What date we are trading at"]
+    shares_owned: Annotated[float, "Number of shares currently owned"]
+    purchase_price: Annotated[float, "Price per share at which current position was purchased"]
 
     sender: Annotated[str, "Agent that sent this message"]
 
@@ -74,3 +102,11 @@ class AgentState(MessagesState):
         RiskDebateState, "Current state of the debate on evaluating risk"
     ]
     final_trade_decision: Annotated[str, "Final decision made by the Risk Analysts"]
+
+    # prediction team discussion step
+    prediction_debate_state: Annotated[
+        PredictionDebateState, "Current state of the price prediction analysis"
+    ]
+    final_predictions: Annotated[
+        str, "Final price predictions with probabilities for 14/30/90 days"
+    ]

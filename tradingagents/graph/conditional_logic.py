@@ -6,10 +6,13 @@ from tradingagents.agents.utils.agent_states import AgentState
 class ConditionalLogic:
     """Handles conditional logic for determining graph flow."""
 
-    def __init__(self, max_debate_rounds=1, max_risk_discuss_rounds=1):
+    def __init__(self, config=None):
         """Initialize with configuration parameters."""
-        self.max_debate_rounds = max_debate_rounds
-        self.max_risk_discuss_rounds = max_risk_discuss_rounds
+        if config is None:
+            config = {}
+        self.max_debate_rounds = config.get("max_debate_rounds", 1)
+        self.max_risk_discuss_rounds = config.get("max_risk_discuss_rounds", 1)
+        self.max_prediction_rounds = config.get("max_prediction_rounds", 1)
 
     def should_continue_market(self, state: AgentState):
         """Determine if market analysis should continue."""
@@ -65,3 +68,22 @@ class ConditionalLogic:
         if state["risk_debate_state"]["latest_speaker"].startswith("Safe"):
             return "Neutral Analyst"
         return "Risky Analyst"
+
+    def should_continue_prediction(self, state: AgentState) -> str:
+        """Determine if prediction debate should continue."""
+        prediction_state = state.get("prediction_debate_state", {})
+        count = prediction_state.get("count", 0)
+
+        # After 3 * max_prediction_rounds, go to manager
+        # (3 agents * rounds = total interactions)
+        if count >= 3 * self.max_prediction_rounds:
+            return "Prediction Manager"
+
+        # Round-robin between predictors
+        latest_speaker = prediction_state.get("latest_speaker", "")
+        if latest_speaker == "Short-Term":
+            return "Medium-Term Predictor"
+        elif latest_speaker == "Medium-Term":
+            return "Long-Term Predictor"
+        else:  # Long-Term or initial state
+            return "Short-Term Predictor" if count > 0 else "Medium-Term Predictor"

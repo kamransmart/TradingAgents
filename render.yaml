@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: tradingagents-web
+    env: docker
+    dockerfilePath: ./Dockerfile
+    region: oregon
+    plan: starter
+    healthCheckPath: /
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ALPHA_VANTAGE_API_KEY
+        sync: false
+      - key: PORT
+        value: 8000
+    autoDeploy: true

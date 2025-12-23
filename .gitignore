@@ -1,11 +1,83 @@
+# Python virtual environments
 .venv
-results
+venv/
 env/
+ENV/
+
+# Environment variables
+.env
+.env.local
+
+# Python cache
 __pycache__/
-.DS_Store
-*.csv
-src/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Results and data
+results/
+dataflows/data_cache/
 eval_results/
 eval_data/
-*.egg-info/
-.env
+src/
+
+# CSV and data files
+*.csv
+*.pkl
+*.h5
+*.db
+*.sqlite
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+chainlit.log
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# ChromaDB
+chroma_db/
+.chroma/
+
+# Chainlit
+.chainlit/
+.files/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp

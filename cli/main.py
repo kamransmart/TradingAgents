@@ -63,6 +63,11 @@ class MessageBuffer:
             "Safe Analyst": "pending",
             # Portfolio Management Team
             "Portfolio Manager": "pending",
+            # Prediction Team
+            "Short-Term Predictor": "pending",
+            "Medium-Term Predictor": "pending",
+            "Long-Term Predictor": "pending",
+            "Prediction Manager": "pending",
         }
         self.current_agent = None
         self.report_sections = {
@@ -190,7 +195,7 @@ def create_layout():
     return layout
 
 
-def update_display(layout, spinner_text=None):
+def update_display(layout, spinner_text=None, enable_prediction_team=True):
     # Header with welcome message
     layout["header"].update(
         Panel(
@@ -231,6 +236,15 @@ def update_display(layout, spinner_text=None):
         "Portfolio Management": ["Portfolio Manager"],
     }
 
+    # Only add Prediction Team if enabled
+    if enable_prediction_team:
+        teams["Prediction Team"] = [
+            "Short-Term Predictor",
+            "Medium-Term Predictor",
+            "Long-Term Predictor",
+            "Prediction Manager",
+        ]
+
     for team, agents in teams.items():
         # Add first agent with team name
         first_agent = agents[0]
@@ -266,11 +280,8 @@ def update_display(layout, spinner_text=None):
                 status_cell = f"[{status_color}]{status}[/{status_color}]"
             progress_table.add_row("", agent, status_cell)
 
-        # Add horizontal line after each team
-        progress_table.add_row("─" * 20, "─" * 20, "─" * 20, style="dim")
-
     layout["progress"].update(
-        Panel(progress_table, title="Progress", border_style="cyan", padding=(1, 2))
+        Panel(progress_table, title="Progress", border_style="cyan", padding=(0, 1))
     )
 
     # Messages panel showing recent messages and tool calls
@@ -405,7 +416,7 @@ def get_user_selections():
     welcome_content = f"{welcome_ascii}\n"
     welcome_content += "[bold green]TradingAgents: Multi-Agents LLM Financial Trading Framework - CLI[/bold green]\n\n"
     welcome_content += "[bold]Workflow Steps:[/bold]\n"
-    welcome_content += "I. Analyst Team → II. Research Team → III. Trader → IV. Risk Management → V. Portfolio Management\n\n"
+    welcome_content += "I. Analyst Team → II. Research Team → III. Trader → IV. Risk Management → V. Portfolio Management → VI. Prediction Team\n\n"
     welcome_content += (
         "[dim]Built by [Tauric Research](https://github.com/TauricResearch)[/dim]"
     )
@@ -467,18 +478,43 @@ def get_user_selections():
     )
     selected_research_depth = select_research_depth()
 
-    # Step 5: OpenAI backend
+    # Step 5: Portfolio Position
     console.print(
         create_question_box(
-            "Step 5: OpenAI backend", "Select which service to talk to"
+            "Step 5: Portfolio Position (Optional)", "Enter your current position in this stock"
+        )
+    )
+    shares_owned, purchase_price = get_portfolio_position()
+    if shares_owned and shares_owned > 0:
+        console.print(
+            f"[green]Current Position:[/green] {shares_owned} shares @ ${purchase_price:.2f}"
+        )
+    else:
+        console.print("[yellow]No current position - analyzing as new investment[/yellow]")
+
+    # Step 6: Enable Prediction Team
+    console.print(
+        create_question_box(
+            "Step 6: Prediction Team", "Enable price prediction analysis (14/30/90-day forecasts)"
+        )
+    )
+    enable_prediction_team = select_enable_prediction_team()
+    console.print(
+        f"[green]Prediction Team:[/green] {'Enabled' if enable_prediction_team else 'Disabled'}"
+    )
+
+    # Step 7: OpenAI backend
+    console.print(
+        create_question_box(
+            "Step 7: OpenAI backend", "Select which service to talk to"
         )
     )
     selected_llm_provider, backend_url = select_llm_provider()
-    
-    # Step 6: Thinking agents
+
+    # Step 8: Thinking agents
     console.print(
         create_question_box(
-            "Step 6: Thinking Agents", "Select your thinking agents for analysis"
+            "Step 8: Thinking Agents", "Select your thinking agents for analysis"
         )
     )
     selected_shallow_thinker = select_shallow_thinking_agent(selected_llm_provider)
@@ -489,6 +525,9 @@ def get_user_selections():
         "analysis_date": analysis_date,
         "analysts": selected_analysts,
         "research_depth": selected_research_depth,
+        "shares_owned": shares_owned,
+        "purchase_price": purchase_price,
+        "enable_prediction_team": enable_prediction_team,
         "llm_provider": selected_llm_provider.lower(),
         "backend_url": backend_url,
         "shallow_thinker": selected_shallow_thinker,
@@ -518,6 +557,36 @@ def get_analysis_date():
             console.print(
                 "[red]Error: Invalid date format. Please use YYYY-MM-DD[/red]"
             )
+
+
+def get_portfolio_position():
+    """Get current portfolio position from user input."""
+    console.print("[dim]Leave blank if you don't currently own this stock[/dim]")
+
+    shares_str = typer.prompt("Number of shares owned", default="0")
+    try:
+        shares_owned = float(shares_str)
+        if shares_owned < 0:
+            console.print("[red]Error: Shares cannot be negative. Setting to 0.[/red]")
+            shares_owned = 0
+    except ValueError:
+        console.print("[red]Error: Invalid number. Setting shares to 0.[/red]")
+        shares_owned = 0
+
+    # Only ask for purchase price if shares are owned
+    purchase_price = 0.0
+    if shares_owned > 0:
+        price_str = typer.prompt("Purchase price per share", default="0")
+        try:
+            purchase_price = float(price_str)
+            if purchase_price < 0:
+                console.print("[red]Error: Price cannot be negative. Setting to 0.[/red]")
+                purchase_price = 0
+        except ValueError:
+            console.print("[red]Error: Invalid price. Setting to 0.[/red]")
+            purchase_price = 0
+
+    return shares_owned, purchase_price
 
 
 def display_complete_report(final_state):
@@ -709,6 +778,17 @@ def display_complete_report(final_state):
                 )
             )
 
+    # VI. Prediction Team Forecasts
+    if final_state.get("final_predictions"):
+        console.print(
+            Panel(
+                Markdown(final_state["final_predictions"]),
+                title="VI. Prediction Team Forecasts",
+                border_style="cyan",
+                padding=(1, 2),
+            )
+        )
+
 
 def update_research_team_status(status):
     """Update status for all research team members and trader."""
@@ -735,6 +815,128 @@ def extract_content_string(content):
     else:
         return str(content)
 
+def generate_comprehensive_text_report(final_state, ticker, analysis_date, results_dir, enable_prediction_team=True):
+    """Generate a comprehensive text report and save to file named with symbol."""
+    report_lines = []
+
+    # Header
+    report_lines.append("=" * 80)
+    report_lines.append("TRADING AGENTS RESEARCH REPORT")
+    report_lines.append(f"Symbol: {ticker}")
+    report_lines.append(f"Analysis Date: {analysis_date}")
+    report_lines.append(f"Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    report_lines.append("=" * 80)
+    report_lines.append("")
+
+    # I. Analyst Team Reports
+    report_lines.append("I. ANALYST TEAM REPORTS")
+    report_lines.append("-" * 80)
+    report_lines.append("")
+
+    if final_state.get("market_report"):
+        report_lines.append("### MARKET ANALYSIS ###")
+        report_lines.append(final_state["market_report"])
+        report_lines.append("")
+
+    if final_state.get("sentiment_report"):
+        report_lines.append("### SOCIAL SENTIMENT ANALYSIS ###")
+        report_lines.append(final_state["sentiment_report"])
+        report_lines.append("")
+
+    if final_state.get("news_report"):
+        report_lines.append("### NEWS ANALYSIS ###")
+        report_lines.append(final_state["news_report"])
+        report_lines.append("")
+
+    if final_state.get("fundamentals_report"):
+        report_lines.append("### FUNDAMENTALS ANALYSIS ###")
+        report_lines.append(final_state["fundamentals_report"])
+        report_lines.append("")
+
+    # II. Research Team Reports
+    if final_state.get("investment_debate_state"):
+        report_lines.append("II. RESEARCH TEAM DECISION")
+        report_lines.append("-" * 80)
+        report_lines.append("")
+
+        debate_state = final_state["investment_debate_state"]
+
+        if debate_state.get("bull_history"):
+            report_lines.append("### BULL RESEARCHER ANALYSIS ###")
+            report_lines.append(debate_state["bull_history"])
+            report_lines.append("")
+
+        if debate_state.get("bear_history"):
+            report_lines.append("### BEAR RESEARCHER ANALYSIS ###")
+            report_lines.append(debate_state["bear_history"])
+            report_lines.append("")
+
+        if debate_state.get("judge_decision"):
+            report_lines.append("### RESEARCH MANAGER DECISION ###")
+            report_lines.append(debate_state["judge_decision"])
+            report_lines.append("")
+
+    # III. Trading Team Reports
+    if final_state.get("trader_investment_plan"):
+        report_lines.append("III. TRADING TEAM PLAN")
+        report_lines.append("-" * 80)
+        report_lines.append("")
+        report_lines.append("### TRADER INVESTMENT PLAN ###")
+        report_lines.append(final_state["trader_investment_plan"])
+        report_lines.append("")
+
+    # IV. Risk Management Team Reports
+    if final_state.get("risk_debate_state"):
+        report_lines.append("IV. RISK MANAGEMENT TEAM ANALYSIS")
+        report_lines.append("-" * 80)
+        report_lines.append("")
+
+        risk_state = final_state["risk_debate_state"]
+
+        if risk_state.get("risky_history"):
+            report_lines.append("### AGGRESSIVE (RISKY) ANALYST ###")
+            report_lines.append(risk_state["risky_history"])
+            report_lines.append("")
+
+        if risk_state.get("safe_history"):
+            report_lines.append("### CONSERVATIVE (SAFE) ANALYST ###")
+            report_lines.append(risk_state["safe_history"])
+            report_lines.append("")
+
+        if risk_state.get("neutral_history"):
+            report_lines.append("### NEUTRAL ANALYST ###")
+            report_lines.append(risk_state["neutral_history"])
+            report_lines.append("")
+
+    # V. Portfolio Management Decision
+    if final_state.get("final_trade_decision"):
+        report_lines.append("V. PORTFOLIO MANAGEMENT DECISION")
+        report_lines.append("-" * 80)
+        report_lines.append("")
+        report_lines.append("### FINAL TRADE DECISION ###")
+        report_lines.append(final_state["final_trade_decision"])
+        report_lines.append("")
+
+    # VI. Prediction Team Forecasts (Prediction Table Only)
+    if enable_prediction_team and final_state.get("final_predictions"):
+        report_lines.append("VI. PREDICTION TEAM FORECASTS")
+        report_lines.append("-" * 80)
+        report_lines.append("")
+        report_lines.append(final_state["final_predictions"])
+        report_lines.append("")
+
+    # Footer
+    report_lines.append("=" * 80)
+    report_lines.append("END OF REPORT")
+    report_lines.append("=" * 80)
+
+    # Save to file with symbol name in the results directory
+    output_file = results_dir / f"{ticker}_research_report.txt"
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write("\n".join(report_lines))
+
+    console.print(f"\n[green]✓ Comprehensive research report saved to: {output_file}[/green]")
+
 def run_analysis():
     # First get all user selections
     selections = get_user_selections()
@@ -743,6 +945,7 @@ def run_analysis():
     config = DEFAULT_CONFIG.copy()
     config["max_debate_rounds"] = selections["research_depth"]
     config["max_risk_discuss_rounds"] = selections["research_depth"]
+    config["enable_prediction_team"] = selections["enable_prediction_team"]
     config["quick_think_llm"] = selections["shallow_thinker"]
     config["deep_think_llm"] = selections["deep_thinker"]
     config["backend_url"] = selections["backend_url"]
@@ -803,9 +1006,11 @@ def run_analysis():
     # Now start the display layout
     layout = create_layout()
 
+    enable_prediction_team = selections["enable_prediction_team"]
+
     with Live(layout, refresh_per_second=4) as live:
         # Initial display
-        update_display(layout)
+        update_display(layout, enable_prediction_team=enable_prediction_team)
 
         # Add initial messages
         message_buffer.add_message("System", f"Selected ticker: {selections['ticker']}")
@@ -816,7 +1021,7 @@ def run_analysis():
             "System",
             f"Selected analysts: {', '.join(analyst.value for analyst in selections['analysts'])}",
         )
-        update_display(layout)
+        update_display(layout, enable_prediction_team=enable_prediction_team)
 
         # Reset agent statuses
         for agent in message_buffer.agent_status:
@@ -831,17 +1036,18 @@ def run_analysis():
         # Update agent status to in_progress for the first analyst
         first_analyst = f"{selections['analysts'][0].value.capitalize()} Analyst"
         message_buffer.update_agent_status(first_analyst, "in_progress")
-        update_display(layout)
+        update_display(layout, enable_prediction_team=enable_prediction_team)
 
         # Create spinner text
         spinner_text = (
             f"Analyzing {selections['ticker']} on {selections['analysis_date']}..."
         )
-        update_display(layout, spinner_text)
+        update_display(layout, spinner_text, enable_prediction_team=enable_prediction_team)
 
         # Initialize state and get graph args
         init_agent_state = graph.propagator.create_initial_state(
-            selections["ticker"], selections["analysis_date"]
+            selections["ticker"], selections["analysis_date"],
+            selections["shares_owned"], selections["purchase_price"]
         )
         args = graph.propagator.get_graph_args()
 
@@ -1071,9 +1277,77 @@ def run_analysis():
                         message_buffer.update_agent_status(
                             "Portfolio Manager", "completed"
                         )
+                        # Set first prediction analyst to in_progress
+                        message_buffer.update_agent_status(
+                            "Short-Term Predictor", "in_progress"
+                        )
+
+                # Prediction Team - Handle Prediction Debate State
+                if "prediction_debate_state" in chunk and chunk["prediction_debate_state"]:
+                    prediction_state = chunk["prediction_debate_state"]
+
+                    # Update Short-Term Predictor status
+                    if (
+                        "current_short_term_response" in prediction_state
+                        and prediction_state["current_short_term_response"]
+                    ):
+                        message_buffer.update_agent_status(
+                            "Short-Term Predictor", "in_progress"
+                        )
+                        message_buffer.add_message(
+                            "Reasoning",
+                            f"Short-Term Predictor: {prediction_state['current_short_term_response'][:200]}...",
+                        )
+
+                    # Update Medium-Term Predictor status
+                    if (
+                        "current_medium_term_response" in prediction_state
+                        and prediction_state["current_medium_term_response"]
+                    ):
+                        message_buffer.update_agent_status(
+                            "Medium-Term Predictor", "in_progress"
+                        )
+                        message_buffer.add_message(
+                            "Reasoning",
+                            f"Medium-Term Predictor: {prediction_state['current_medium_term_response'][:200]}...",
+                        )
+
+                    # Update Long-Term Predictor status
+                    if (
+                        "current_long_term_response" in prediction_state
+                        and prediction_state["current_long_term_response"]
+                    ):
+                        message_buffer.update_agent_status(
+                            "Long-Term Predictor", "in_progress"
+                        )
+                        message_buffer.add_message(
+                            "Reasoning",
+                            f"Long-Term Predictor: {prediction_state['current_long_term_response'][:200]}...",
+                        )
+
+                    # Update Prediction Manager status and final predictions
+                    if (
+                        "final_predictions" in prediction_state
+                        and prediction_state["final_predictions"]
+                    ):
+                        message_buffer.update_agent_status(
+                            "Prediction Manager", "in_progress"
+                        )
+                        message_buffer.add_message(
+                            "Reasoning",
+                            f"Prediction Manager: Consolidating predictions...",
+                        )
+
+                # Handle final_predictions in main state (when Prediction Manager completes)
+                if "final_predictions" in chunk and chunk["final_predictions"]:
+                    # Mark all prediction team members as completed
+                    message_buffer.update_agent_status("Short-Term Predictor", "completed")
+                    message_buffer.update_agent_status("Medium-Term Predictor", "completed")
+                    message_buffer.update_agent_status("Long-Term Predictor", "completed")
+                    message_buffer.update_agent_status("Prediction Manager", "completed")
 
                 # Update the display
-                update_display(layout)
+                update_display(layout, enable_prediction_team=enable_prediction_team)
 
             trace.append(chunk)
 
@@ -1097,7 +1371,10 @@ def run_analysis():
         # Display the complete final report
         display_complete_report(final_state)
 
-        update_display(layout)
+        # Generate comprehensive text report
+        generate_comprehensive_text_report(final_state, selections["ticker"], selections["analysis_date"], results_dir, enable_prediction_team)
+
+        update_display(layout, enable_prediction_team=enable_prediction_team)
 
 
 @app.command()

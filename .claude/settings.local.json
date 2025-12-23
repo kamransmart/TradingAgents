@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(echo:*)",
+      "Bash(python:*)",
+      "Bash(python3:*)",
+      "Bash(find:*)",
+      "Bash(cat:*)",
+      "Bash(source:*)",
+      "Bash(chainlit:*)",
+      "Bash(pkill:*)",
+      "Bash(export AWS_PROFILE=tradingagents)",
+      "Bash(aws iam list-attached-user-policies:*)"
+    ]
+  }
+}
