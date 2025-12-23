@@ -640,8 +640,8 @@ async def run_trading_analysis():
 
         # Create initial state
         inputs = graph.propagator.create_initial_state(
-            ticker=ticker,
-            analysis_date=analysis_date,
+            company_name=ticker,
+            trade_date=analysis_date,
             shares_owned=shares_owned,
             purchase_price=purchase_price
         )
