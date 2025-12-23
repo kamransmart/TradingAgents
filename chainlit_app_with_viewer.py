@@ -687,8 +687,9 @@ async def run_graph_with_streaming(graph, inputs):
 
     result = None
 
-    # Stream the graph execution using graph.graph.astream
-    async for event in graph.graph.astream(inputs):
+    # Stream the graph execution using graph.graph.astream with increased recursion limit
+    config = {"recursion_limit": 100}
+    async for event in graph.graph.astream(inputs, config=config):
         for node_name, node_output in event.items():
 
             # Update progress based on node
