@@ -30,11 +30,11 @@ EXPOSE 8000
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV CHAINLIT_HOST=0.0.0.0
-ENV CHAINLIT_PORT=8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/health', timeout=5)"
+# Health check - disabled for Railway as it provides its own
+# HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+#     CMD python -c "import requests; requests.get('http://localhost:8000/health', timeout=5)"
 
 # Run the Chainlit app (interactive version with model selection)
-CMD ["chainlit", "run", "chainlit_app_interactive.py", "--host", "0.0.0.0", "--port", "8000"]
+# Use shell form to allow PORT environment variable expansion
+CMD chainlit run chainlit_app_interactive.py --host 0.0.0.0 --port ${PORT:-8000}
