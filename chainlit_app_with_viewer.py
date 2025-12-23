@@ -581,6 +581,7 @@ Press Enter for OpenAI:"""
         "max_debate_rounds": debate_rounds,
         "max_risk_discuss_rounds": 1,
         "max_prediction_rounds": 1,
+        "enable_prediction_team": enable_predictions,
     })
 
     # Store in session

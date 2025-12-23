@@ -15,5 +15,5 @@ export CHAINLIT_PORT=$PORT
 echo "PORT=$PORT"
 echo "CHAINLIT_PORT=$CHAINLIT_PORT"
 
-# Start Chainlit
-exec chainlit run chainlit_app_interactive.py --host 0.0.0.0 --port $PORT
+# Start Chainlit with viewer app
+exec chainlit run chainlit_app_with_viewer.py --host 0.0.0.0 --port $PORT
