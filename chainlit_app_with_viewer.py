@@ -629,27 +629,27 @@ async def run_trading_analysis():
     await cl.Message(content="🔄 Initializing agents...").send()
 
     try:
-        # Initialize the graph
+        # Initialize the graph (builds automatically)
         graph = TradingAgentsGraph(
             selected_analysts=selected_analysts,
             debug=False,
             config=config
         )
 
-        await cl.Message(content="🔄 Building analysis graph...").send()
-
-        # Build the graph
-        compiled_graph = graph.build_graph(enable_predictions=enable_predictions)
-
         await cl.Message(content=f"🔄 Running analysis for {ticker}...").send()
+
+        # Create initial state
+        inputs = graph.propagator.create_initial_state(
+            ticker=ticker,
+            analysis_date=analysis_date,
+            shares_owned=shares_owned,
+            purchase_price=purchase_price
+        )
 
         # Run the graph
         result = await run_graph_with_streaming(
-            compiled_graph,
-            ticker,
-            analysis_date,
-            shares_owned,
-            purchase_price
+            graph,
+            inputs
         )
 
         # Send final results
@@ -665,17 +665,8 @@ async def run_trading_analysis():
         cl.user_session.set("config_set", False)
 
 
-async def run_graph_with_streaming(graph, ticker, analysis_date, shares_owned, purchase_price):
+async def run_graph_with_streaming(graph, inputs):
     """Run the graph and stream agent outputs to the chat."""
-
-    # Initial inputs
-    inputs = {
-        "company_of_interest": ticker,
-        "trade_date": analysis_date,
-        "shares_owned": shares_owned,
-        "purchase_price": purchase_price,
-        "messages": []
-    }
 
     # Track agent progress
     agent_tracker = {
@@ -686,8 +677,8 @@ async def run_graph_with_streaming(graph, ticker, analysis_date, shares_owned, p
 
     result = None
 
-    # Stream the graph execution
-    async for event in graph.astream(inputs):
+    # Stream the graph execution using graph.graph.astream
+    async for event in graph.graph.astream(inputs):
         for node_name, node_output in event.items():
 
             # Update progress based on node
