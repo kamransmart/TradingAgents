@@ -76,6 +76,8 @@ class PredictionDebateState(TypedDict):
 class AgentState(MessagesState):
     company_of_interest: Annotated[str, "Company that we are interested in trading"]
     trade_date: Annotated[str, "What date we are trading at"]
+    shares_owned: Annotated[float, "Number of shares currently owned"]
+    purchase_price: Annotated[float, "Price per share at which current position was purchased"]
 
     sender: Annotated[str, "Agent that sent this message"]
 

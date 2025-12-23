@@ -5,7 +5,10 @@
       "Bash(python:*)",
       "Bash(python3:*)",
       "Bash(find:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(source:*)",
+      "Bash(chainlit:*)",
+      "Bash(pkill:*)"
     ]
   }
 }

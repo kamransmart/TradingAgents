@@ -478,10 +478,24 @@ def get_user_selections():
     )
     selected_research_depth = select_research_depth()
 
-    # Step 5: Enable Prediction Team
+    # Step 5: Portfolio Position
     console.print(
         create_question_box(
-            "Step 5: Prediction Team", "Enable price prediction analysis (14/30/90-day forecasts)"
+            "Step 5: Portfolio Position (Optional)", "Enter your current position in this stock"
+        )
+    )
+    shares_owned, purchase_price = get_portfolio_position()
+    if shares_owned and shares_owned > 0:
+        console.print(
+            f"[green]Current Position:[/green] {shares_owned} shares @ ${purchase_price:.2f}"
+        )
+    else:
+        console.print("[yellow]No current position - analyzing as new investment[/yellow]")
+
+    # Step 6: Enable Prediction Team
+    console.print(
+        create_question_box(
+            "Step 6: Prediction Team", "Enable price prediction analysis (14/30/90-day forecasts)"
         )
     )
     enable_prediction_team = select_enable_prediction_team()
@@ -489,18 +503,18 @@ def get_user_selections():
         f"[green]Prediction Team:[/green] {'Enabled' if enable_prediction_team else 'Disabled'}"
     )
 
-    # Step 6: OpenAI backend
+    # Step 7: OpenAI backend
     console.print(
         create_question_box(
-            "Step 6: OpenAI backend", "Select which service to talk to"
+            "Step 7: OpenAI backend", "Select which service to talk to"
         )
     )
     selected_llm_provider, backend_url = select_llm_provider()
 
-    # Step 7: Thinking agents
+    # Step 8: Thinking agents
     console.print(
         create_question_box(
-            "Step 7: Thinking Agents", "Select your thinking agents for analysis"
+            "Step 8: Thinking Agents", "Select your thinking agents for analysis"
         )
     )
     selected_shallow_thinker = select_shallow_thinking_agent(selected_llm_provider)
@@ -511,6 +525,8 @@ def get_user_selections():
         "analysis_date": analysis_date,
         "analysts": selected_analysts,
         "research_depth": selected_research_depth,
+        "shares_owned": shares_owned,
+        "purchase_price": purchase_price,
         "enable_prediction_team": enable_prediction_team,
         "llm_provider": selected_llm_provider.lower(),
         "backend_url": backend_url,
@@ -541,6 +557,36 @@ def get_analysis_date():
             console.print(
                 "[red]Error: Invalid date format. Please use YYYY-MM-DD[/red]"
             )
+
+
+def get_portfolio_position():
+    """Get current portfolio position from user input."""
+    console.print("[dim]Leave blank if you don't currently own this stock[/dim]")
+
+    shares_str = typer.prompt("Number of shares owned", default="0")
+    try:
+        shares_owned = float(shares_str)
+        if shares_owned < 0:
+            console.print("[red]Error: Shares cannot be negative. Setting to 0.[/red]")
+            shares_owned = 0
+    except ValueError:
+        console.print("[red]Error: Invalid number. Setting shares to 0.[/red]")
+        shares_owned = 0
+
+    # Only ask for purchase price if shares are owned
+    purchase_price = 0.0
+    if shares_owned > 0:
+        price_str = typer.prompt("Purchase price per share", default="0")
+        try:
+            purchase_price = float(price_str)
+            if purchase_price < 0:
+                console.print("[red]Error: Price cannot be negative. Setting to 0.[/red]")
+                purchase_price = 0
+        except ValueError:
+            console.print("[red]Error: Invalid price. Setting to 0.[/red]")
+            purchase_price = 0
+
+    return shares_owned, purchase_price
 
 
 def display_complete_report(final_state):
@@ -1000,7 +1046,8 @@ def run_analysis():
 
         # Initialize state and get graph args
         init_agent_state = graph.propagator.create_initial_state(
-            selections["ticker"], selections["analysis_date"]
+            selections["ticker"], selections["analysis_date"],
+            selections["shares_owned"], selections["purchase_price"]
         )
         args = graph.propagator.get_graph_args()
 
