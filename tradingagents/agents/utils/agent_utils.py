@@ -53,6 +53,7 @@ def create_msg_delete():
                             # matches[-1][4] is the Close field from the last date line
                             try:
                                 current_price = float(matches[-1][4].strip())
+                                print(f"[DEBUG] Extracted current_price from CSV: ${current_price:.2f} (from date {matches[-1][0]})")
                                 break
                             except (ValueError, IndexError):
                                 pass
@@ -66,6 +67,7 @@ def create_msg_delete():
                             valid_prices = [float(p) for p in close_matches if 1.0 < float(p) < 10000.0]
                             if valid_prices:
                                 current_price = valid_prices[-1]
+                                print(f"[DEBUG] Extracted current_price from fallback: ${current_price:.2f}")
                                 break
 
                     except (ValueError, IndexError):
