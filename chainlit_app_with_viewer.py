@@ -47,8 +47,20 @@ def save_to_s3(content: str, s3_key: str) -> bool:
         print(f"Error saving to S3: {e}")
         return False
 
-# Initialize Results Manager
-results_manager = ResultsManager()
+# Initialize S3 client for results manager
+s3_client = None
+if USE_S3:
+    try:
+        s3_client = boto3.client('s3',
+            aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+            region_name=os.getenv("AWS_REGION", "us-east-1")
+        )
+    except:
+        pass
+
+# Initialize Results Manager with S3 support
+results_manager = ResultsManager(s3_client=s3_client, s3_bucket=S3_BUCKET)
 
 # Configuration options for the UI
 ANALYST_OPTIONS = {
@@ -225,34 +237,19 @@ async def show_results_browser():
     # Get summary stats
     stats = results_manager.get_summary_stats()
 
-    # Check if we have any local results
+    # Get recent results (includes both local and S3)
+    recent_results = results_manager.get_recent_results(limit=10)
+
     if stats['total_analyses'] == 0:
-        # No local results - likely on Railway
         no_results_msg = """# 📊 Results Browser
 
-⚠️ **No local results found**
+No analysis results found yet.
 
-This is expected when running on Railway or cloud platforms with ephemeral storage.
-
-**Your results are saved to S3!**
-
-To view your analysis results:
-1. Go to AWS S3 Console: https://s3.console.aws.amazon.com/s3/buckets/tradingagents-results-185327115759
-2. Navigate to `results/{TICKER}/{DATE}/`
-3. Download and view the report files
-
-Or use AWS CLI:
-```bash
-aws s3 ls s3://tradingagents-results-185327115759/results/ --recursive
-aws s3 cp s3://tradingagents-results-185327115759/results/{TICKER}/{DATE}/ ./local-results/ --recursive
-```
+Start a new analysis to see results here!
 
 Type `menu` to return to main menu."""
         await cl.Message(content=no_results_msg).send()
         return
-
-    # Get recent results
-    recent_results = results_manager.get_recent_results(limit=10)
 
     stats_msg = f"""# 📊 Results Browser
 
@@ -402,14 +399,20 @@ async def show_result_details(result: dict):
 
     ticker = result['ticker']
     date = result['date']
+    s3_prefix = result.get('s3_prefix')  # For S3 results
+    source = result.get('source', 'local')
 
-    # Get all reports
-    reports = results_manager.get_all_reports_for_analysis(ticker, date)
+    # Get all reports (from S3 or local)
+    reports = results_manager.get_all_reports_for_analysis(ticker, date, s3_prefix=s3_prefix)
+
+    report_count = result.get('report_count', len(reports))
+    source_label = "📁 Local" if source == "local" else "☁️ S3"
 
     header = f"""# 📊 Analysis Details: {ticker} ({date})
 
-**Reports Available**: {result['report_count']}
-**Created**: {result['created_time'].strftime('%Y-%m-%d %I:%M %p') if result['created_time'] else 'Unknown'}
+**Source**: {source_label}
+**Reports Available**: {report_count}
+**Created**: {result['created_time'].strftime('%Y-%m-%d %I:%M %p') if result.get('created_time') else 'Unknown'}
 
 ---
 """
