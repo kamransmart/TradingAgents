@@ -127,7 +127,17 @@ class ResultsManager:
         results.extend(s3_results)
 
         # Sort by creation time (newest first)
-        results.sort(key=lambda x: x["created_time"] if x.get("created_time") else datetime.min, reverse=True)
+        # Handle both timezone-aware (S3) and timezone-naive (local) datetimes
+        def get_sort_key(x):
+            created_time = x.get("created_time")
+            if not created_time:
+                return datetime.min.replace(tzinfo=None)
+            # Make timezone-naive for comparison
+            if hasattr(created_time, 'tzinfo') and created_time.tzinfo is not None:
+                return created_time.replace(tzinfo=None)
+            return created_time
+
+        results.sort(key=get_sort_key, reverse=True)
 
         return results
 
