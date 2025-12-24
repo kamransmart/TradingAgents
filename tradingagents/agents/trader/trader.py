@@ -14,24 +14,8 @@ def create_trader(llm, memory):
         shares_owned = state.get("shares_owned", 0)
         purchase_price = state.get("purchase_price", 0)
 
-        # Extract current price from market report
-        import re
-        current_price = None
-        price_patterns = [
-            r'Close Price[:\s]+\$?(\d+\.?\d*)',
-            r'price at the close[^$]*?was\s+\$?(\d+\.?\d*)',
-            r'close on[^$]*?was\s+\$?(\d+\.?\d*)',
-            r'current price[^$]*?\$?(\d+\.?\d*)',
-            r'\|\s*Close\s*\|\s*(\d+\.?\d+)',
-        ]
-        for pattern in price_patterns:
-            match = re.search(pattern, market_research_report, re.IGNORECASE)
-            if match:
-                try:
-                    current_price = float(match.group(1))
-                    break
-                except (ValueError, IndexError):
-                    continue
+        # Get current price from state (set by market analyst)
+        current_price = state.get("current_price")
 
         curr_situation = f"{market_research_report}\n\n{sentiment_report}\n\n{news_report}\n\n{fundamentals_report}"
         past_memories = memory.get_memories(curr_situation, n_matches=2)

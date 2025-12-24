@@ -73,13 +73,38 @@ Volume-Based Indicators:
         result = chain.invoke(state["messages"])
 
         report = ""
+        current_price = None
 
         if len(result.tool_calls) == 0:
             report = result.content
-       
-        return {
+
+            # Extract current price from the report
+            import re
+            price_patterns = [
+                r'Close Price[:\s]+\$?(\d+\.?\d*)',
+                r'price at the close[^$]*?was\s+\$?(\d+\.?\d*)',
+                r'close on[^$]*?was\s+\$?(\d+\.?\d*)',
+                r'current price[^$]*?\$?(\d+\.?\d*)',
+                r'\|\s*Close\s*\|\s*(\d+\.?\d+)',
+            ]
+            for pattern in price_patterns:
+                match = re.search(pattern, report, re.IGNORECASE)
+                if match:
+                    try:
+                        current_price = float(match.group(1))
+                        break
+                    except (ValueError, IndexError):
+                        continue
+
+        return_dict = {
             "messages": [result],
             "market_report": report,
         }
+
+        # Only add current_price if we found one
+        if current_price is not None:
+            return_dict["current_price"] = current_price
+
+        return return_dict
 
     return market_analyst_node

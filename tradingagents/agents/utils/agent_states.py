@@ -78,6 +78,7 @@ class AgentState(MessagesState):
     trade_date: Annotated[str, "What date we are trading at"]
     shares_owned: Annotated[float, "Number of shares currently owned"]
     purchase_price: Annotated[float, "Price per share at which current position was purchased"]
+    current_price: Annotated[Optional[float], "Current market price of the stock"]
 
     sender: Annotated[str, "Agent that sent this message"]
 

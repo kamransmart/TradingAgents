@@ -19,6 +19,7 @@ def create_long_term_predictor(llm, memory=None):
         # Get all previous analysis
         company = state["company_of_interest"]
         trade_date = state["trade_date"]
+        current_price = state.get("current_price")
         market_report = state.get("market_report", "")
         sentiment_report = state.get("sentiment_report", "")
         news_report = state.get("news_report", "")
@@ -50,8 +51,9 @@ def create_long_term_predictor(llm, memory=None):
             except Exception:
                 memory_context = ""
 
+        price_context = f"\n**CURRENT MARKET PRICE: ${current_price:.2f}**\n" if current_price else ""
         prompt = f"""You are the Long-Term Price Predictor (90-day horizon). Your role is to analyze all available data and provide a detailed 90-day price forecast for {company} as of {trade_date}.
-
+{price_context}
 COMPREHENSIVE ANALYSIS AVAILABLE:
 
 Market Analysis:
@@ -92,7 +94,7 @@ DEBATE HISTORY:
 YOUR TASK:
 Provide a comprehensive LONG-TERM (90-day) price prediction with the following structure:
 
-1. **Current Price Assessment**: Identify the current or most recent closing price from the market data.
+1. **Current Price**: The current market price is ${current_price:.2f if current_price else 'XX.XX'} (from market data above).
 
 2. **90-Day Price Predictions**: Provide three scenarios with EXACT dollar values and probabilities:
    - **Bear Case** (worst-case scenario): Price target and probability (%)
