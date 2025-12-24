@@ -752,6 +752,9 @@ async def send_final_results(result, ticker, analysis_date):
         "sentiment_report.md": result.get("sentiment_report"),
         "news_report.md": result.get("news_report"),
         "fundamentals_report.md": result.get("fundamentals_report"),
+        "investment_plan.md": result.get("investment_debate_state", {}).get("judge_decision") if result.get("investment_debate_state") else None,
+        "trader_investment_plan.md": result.get("trader_investment_plan"),
+        "risk_analysis.md": result.get("risk_debate_state", {}).get("judge_decision") if result.get("risk_debate_state") else None,
     }
 
     # Save all reports to S3 (works on Railway without local disk)
