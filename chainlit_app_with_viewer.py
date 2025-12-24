@@ -225,6 +225,32 @@ async def show_results_browser():
     # Get summary stats
     stats = results_manager.get_summary_stats()
 
+    # Check if we have any local results
+    if stats['total_analyses'] == 0:
+        # No local results - likely on Railway
+        no_results_msg = """# 📊 Results Browser
+
+⚠️ **No local results found**
+
+This is expected when running on Railway or cloud platforms with ephemeral storage.
+
+**Your results are saved to S3!**
+
+To view your analysis results:
+1. Go to AWS S3 Console: https://s3.console.aws.amazon.com/s3/buckets/tradingagents-results-185327115759
+2. Navigate to `results/{TICKER}/{DATE}/`
+3. Download and view the report files
+
+Or use AWS CLI:
+```bash
+aws s3 ls s3://tradingagents-results-185327115759/results/ --recursive
+aws s3 cp s3://tradingagents-results-185327115759/results/{TICKER}/{DATE}/ ./local-results/ --recursive
+```
+
+Type `menu` to return to main menu."""
+        await cl.Message(content=no_results_msg).send()
+        return
+
     # Get recent results
     recent_results = results_manager.get_recent_results(limit=10)
 
