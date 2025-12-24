@@ -41,21 +41,28 @@ class ResultsManager:
                 for obj in page['Contents']:
                     key = obj['Key']
                     # Parse: results/TICKER/DATE_TIMESTAMP/...
-                    match = re.match(r'results/([^/]+)/(\d{4}-\d{2}-\d{2})_(\d+)/', key)
+                    # Match both formats: YYYY-MM-DD_TIMESTAMP and today_TIMESTAMP
+                    match = re.match(r'results/([^/]+)/([^/]+)_(\d+)/', key)
                     if match:
                         ticker = match.group(1)
-                        date = match.group(2)
+                        date_or_today = match.group(2)
                         timestamp = match.group(3)
-                        result_id = f"{ticker}_{date}_{timestamp}"
+                        result_id = f"{ticker}_{date_or_today}_{timestamp}"
 
                         if result_id not in seen:
                             seen.add(result_id)
+                            # Convert 'today' to actual date for display
+                            display_date = date_or_today
+                            if date_or_today == 'today':
+                                # Use the last modified date
+                                display_date = obj['LastModified'].strftime('%Y-%m-%d')
+
                             results.append({
                                 "ticker": ticker,
-                                "date": date,
+                                "date": display_date,
                                 "timestamp": timestamp,
-                                "path": f"s3://{self.s3_bucket}/results/{ticker}/{date}_{timestamp}",
-                                "s3_prefix": f"results/{ticker}/{date}_{timestamp}",
+                                "path": f"s3://{self.s3_bucket}/results/{ticker}/{date_or_today}_{timestamp}",
+                                "s3_prefix": f"results/{ticker}/{date_or_today}_{timestamp}",
                                 "created_time": obj['LastModified'],
                                 "source": "s3"
                             })
