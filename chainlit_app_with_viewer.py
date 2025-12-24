@@ -496,10 +496,16 @@ async def configure_analysis(user_input: str):
 
     # Ask for analysis date
     date_response = await cl.AskUserMessage(
-        content=f"📅 Analysis date? (Press Enter for today: {datetime.now().strftime('%Y-%m-%d')})",
+        content=f"📅 Analysis date? (Type 'today' or YYYY-MM-DD format, or press Enter for today: {datetime.now().strftime('%Y-%m-%d')})",
         timeout=60
     ).send()
-    analysis_date = date_response['output'].strip() or datetime.now().strftime('%Y-%m-%d')
+
+    # Handle "today" keyword or empty input
+    date_input = date_response['output'].strip().lower()
+    if not date_input or date_input == 'today':
+        analysis_date = datetime.now().strftime('%Y-%m-%d')
+    else:
+        analysis_date = date_response['output'].strip()
 
     # Ask for analyst selection
     analyst_msg = """🔍 Select which analysts to include (comma-separated):
