@@ -743,49 +743,54 @@ async def send_final_results(result, ticker, analysis_date):
 
     # Get the actual trade date from result (in case "today" was passed)
     actual_date = result.get("trade_date", analysis_date)
-
-    # Check for report files and save to S3
-    results_dir = Path(f"./results/{ticker}/{actual_date}")
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     s3_base = f"results/{ticker}/{actual_date}_{timestamp}"
 
+    # Extract reports directly from result state
+    reports = {
+        "market_report.md": result.get("market_report"),
+        "sentiment_report.md": result.get("sentiment_report"),
+        "news_report.md": result.get("news_report"),
+        "fundamentals_report.md": result.get("fundamentals_report"),
+    }
+
+    # Save all reports to S3 (works on Railway without local disk)
+    if USE_S3:
+        for report_name, report_content in reports.items():
+            if report_content:
+                save_to_s3(report_content, f"{s3_base}/reports/{report_name}")
+
+        # Save final decision and predictions
+        save_to_s3(final_decision, f"{s3_base}/{ticker}_final_decision.txt")
+        if final_predictions:
+            save_to_s3(final_predictions, f"{s3_base}/reports/predictions.md")
+
+    # Display reports in UI
+    await cl.Message(content="📄 **Analysis Reports:**").send()
+
+    for report_name, report_content in reports.items():
+        if report_content:
+            formatted_name = report_name.replace('_', ' ').replace('.md', '').title()
+            await cl.Message(
+                content=f"**{formatted_name}**\n\n{report_content}"
+            ).send()
+
+    # Also try to attach local files if they exist (for local dev)
+    results_dir = Path(f"./results/{ticker}/{actual_date}")
     if results_dir.exists():
         reports_dir = results_dir / "reports"
         if reports_dir.exists():
-            # Send report files
             report_files = list(reports_dir.glob("*.md"))
-
-            if report_files:
-                await cl.Message(content="📄 **Analysis Reports:**").send()
-
-                for report_file in report_files:
-                    # Read and send report content
-                    with open(report_file, 'r') as f:
-                        report_content = f.read()
-
-                    # Save to S3
-                    if USE_S3:
-                        s3_key = f"{s3_base}/reports/{report_file.name}"
-                        save_to_s3(report_content, s3_key)
-
-                    # Create downloadable file
+            for report_file in report_files:
+                try:
                     file_element = cl.File(
                         name=report_file.name,
                         path=str(report_file),
                         display="inline"
                     )
-
-                    report_name = report_file.stem.replace('_', ' ').title()
-                    await cl.Message(
-                        content=f"**{report_name}**",
-                        elements=[file_element]
-                    ).send()
-
-        # Also save final decision and predictions to S3
-        if USE_S3:
-            save_to_s3(final_decision, f"{s3_base}/{ticker}_final_decision.txt")
-            if final_predictions:
-                save_to_s3(final_predictions, f"{s3_base}/reports/predictions.md")
+                    await cl.Message(content=f"Download: {report_file.name}", elements=[file_element]).send()
+                except:
+                    pass  # Skip if file attachment fails
 
     # Show storage location and offer next actions
     storage_info = f"S3: `s3://{S3_BUCKET}/{s3_base}/`" if USE_S3 else f"Local: `{results_dir}`"
