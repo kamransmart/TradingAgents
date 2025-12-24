@@ -10,7 +10,13 @@
       "Bash(chainlit:*)",
       "Bash(pkill:*)",
       "Bash(export AWS_PROFILE=tradingagents)",
-      "Bash(aws iam list-attached-user-policies:*)"
+      "Bash(aws iam list-attached-user-policies:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)"
     ]
   }
 }
