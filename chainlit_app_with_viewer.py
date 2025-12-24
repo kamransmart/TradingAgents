@@ -741,10 +741,13 @@ async def send_final_results(result, ticker, analysis_date):
 """
         await cl.Message(content=predictions_msg).send()
 
+    # Get the actual trade date from result (in case "today" was passed)
+    actual_date = result.get("trade_date", analysis_date)
+
     # Check for report files and save to S3
-    results_dir = Path(f"./results/{ticker}/{analysis_date}")
+    results_dir = Path(f"./results/{ticker}/{actual_date}")
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    s3_base = f"results/{ticker}/{analysis_date}_{timestamp}"
+    s3_base = f"results/{ticker}/{actual_date}_{timestamp}"
 
     if results_dir.exists():
         reports_dir = results_dir / "reports"
@@ -777,6 +780,12 @@ async def send_final_results(result, ticker, analysis_date):
                         content=f"**{report_name}**",
                         elements=[file_element]
                     ).send()
+
+        # Also save final decision and predictions to S3
+        if USE_S3:
+            save_to_s3(final_decision, f"{s3_base}/{ticker}_final_decision.txt")
+            if final_predictions:
+                save_to_s3(final_predictions, f"{s3_base}/reports/predictions.md")
 
     # Show storage location and offer next actions
     storage_info = f"S3: `s3://{S3_BUCKET}/{s3_base}/`" if USE_S3 else f"Local: `{results_dir}`"
