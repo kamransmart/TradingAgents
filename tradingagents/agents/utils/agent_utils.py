@@ -39,29 +39,34 @@ def create_msg_delete():
 
                     # Try to parse as DataFrame string representation
                     try:
-                        # Look for the last Close price in the message
-                        # Multiple patterns to handle different DataFrame formats
-                        patterns = [
-                            # Pattern 1: Table format with column header "Close" and values
-                            r'(?:Close[\s\|]+)([\d.]+)',
-                            # Pattern 2: Last row format "2024-XX-XX ... Close_Value ..."
-                            r'Close\s+(\d+\.?\d+)',
-                            # Pattern 3: Direct number after "Close"
-                            r'Close[:\s]+(\d+\.?\d+)',
-                        ]
+                        # Strategy: Find lines with date patterns, extract Close value from those lines
+                        # This avoids grabbing numbers from other columns like "Stock Splits"
 
-                        for pattern in patterns:
-                            close_matches = re.findall(pattern, content, re.IGNORECASE)
-                            if close_matches:
-                                # Get the last (most recent) close price
-                                try:
-                                    current_price = float(close_matches[-1])
-                                    break
-                                except ValueError:
-                                    continue
+                        # Pattern: Date line with OHLCV data
+                        # Format: YYYY-MM-DD,Open,High,Low,Close,Volume,Dividends,Stock Splits
+                        # We want the 5th field (Close) from lines starting with a date
+                        date_pattern = r'(\d{4}-\d{2}-\d{2}),([^,]+),([^,]+),([^,]+),([^,]+),'
+                        matches = re.findall(date_pattern, content)
 
-                        if current_price:
-                            break
+                        if matches:
+                            # Get the Close price from the last (most recent) date
+                            # matches[-1][4] is the Close field from the last date line
+                            try:
+                                current_price = float(matches[-1][4].strip())
+                                break
+                            except (ValueError, IndexError):
+                                pass
+
+                        # Fallback: Try DataFrame table format (less reliable)
+                        # Look for Close column values that are reasonable stock prices (> $1, < $10000)
+                        if not current_price:
+                            close_pattern = r'Close[,\s]+(\d+\.?\d*)'
+                            close_matches = re.findall(close_pattern, content, re.IGNORECASE)
+                            # Filter to reasonable stock price range and take the last one
+                            valid_prices = [float(p) for p in close_matches if 1.0 < float(p) < 10000.0]
+                            if valid_prices:
+                                current_price = valid_prices[-1]
+                                break
 
                     except (ValueError, IndexError):
                         continue
